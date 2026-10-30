@@ -1,5 +1,7 @@
 # caching-proxy
 
+**Build notes:** [Caching Proxy — Build Notes](https://github.com/TheMoeaegon/engineering-notebook/blob/master/Caching%20Proxy.md)
+
 A small HTTP caching proxy written in TypeScript for Bun. It forwards requests
 to an origin, caches `GET`/`HEAD` responses, and revalidates stale entries with
 `ETag` / `Last-Modified`.
