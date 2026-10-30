@@ -1,52 +1,27 @@
 #!/usr/bin/env bun
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { startServer } from "./src/proxy/server";
+import { serveCommand } from "./commands/serve";
+import { clearCacheCommand } from "./commands/clear-cache";
+import { NO_ARGS_HELP } from "./commands/shared";
 
-const argv = yargs(hideBin(process.argv))
-    .usage("$0 [options]")
-    .option("port", {
-        alias: "p",
-        type: "number",
-        default: 3000,
-        describe: "Port for the proxy server",
-    })
-    .option("origin", {
-        alias: "o",
-        type: "string",
-        default: "https://dummyjson.com",
-        describe: "Upstream origin to proxy and cache",
-    })
-    .check((args) => {
-        if (
-            typeof args.port !== "number" ||
-            !Number.isInteger(args.port) ||
-            args.port < 1 ||
-            args.port > 65535
-        ) {
-            throw new Error("--port must be an integer between 1 and 65535");
-        }
+const rawArgs = hideBin(process.argv);
 
-        let url: URL;
-        try {
-            url = new URL(args.origin);
-        } catch {
-            throw new Error("--origin must be a valid URL");
-        }
+// Bare `caching-proxy` shows the command list instead of starting a server,
+if (rawArgs.length === 0) {
+    console.log(NO_ARGS_HELP);
+    process.exit(0);
+}
 
-        if (url.protocol !== "http:" && url.protocol !== "https:") {
-            throw new Error("--origin must use http or https");
-        }
-
-        return true;
-    })
+await yargs(rawArgs)
+    .scriptName("caching-proxy")
+    .usage("$0 <command> [options]")
+    .command(serveCommand)
+    .command(clearCacheCommand)
+    .demandCommand(1, "Choose a command: serve or clear-cache")
     .strict()
     .help()
     .alias("help", "h")
     .version()
-    .parseSync();
-
-// normalize to scheme + host so the request path can be appended cleanly
-const origin = new URL(argv.origin).origin;
-
-startServer(argv.port, origin);
+    .epilogue("Run `caching-proxy <command> --help` for that command's flags.")
+    .parse();

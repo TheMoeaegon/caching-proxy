@@ -2,6 +2,7 @@ import http from "node:http";
 import {
     ageSeconds,
     buildKey,
+    cache,
     createEntry,
     getCache,
     isCacheable,
@@ -15,7 +16,13 @@ import {
     upstreamRequestHeaders,
 } from "./headers";
 import { prepareBody } from "./body";
+import { handleClearCacheRequest } from "./clear-cache";
 import type { CacheEntry } from "../types";
+
+export type ServerOptions = {
+    port: number;
+    origin: string;
+};
 
 function headerValue(value: string | string[] | undefined): string | undefined {
     return Array.isArray(value) ? value.join(", ") : value;
@@ -104,11 +111,14 @@ function sendNotModified(response: http.ServerResponse, entry: CacheEntry) {
     response.end();
 }
 
-export function startServer(PORT: number, baseUrl: string) {
+export function startServer({ port, origin }: ServerOptions) {
     const server = http.createServer(async (request, response) => {
         try {
+            // control endpoint: never proxied, never cached
+            if (handleClearCacheRequest(request, response)) return;
+
             const path = request.url ?? "/";
-            const u = new URL(path, baseUrl);
+            const u = new URL(path, origin);
 
             // non-cacheable methods: forward as-is, never store
             if (request.method != "GET" && request.method != "HEAD") {
@@ -194,8 +204,8 @@ export function startServer(PORT: number, baseUrl: string) {
         }
     });
 
-    server.listen(PORT, () => {
-        console.log(`server starting at port ${PORT}`);
+    server.listen(port, () => {
+        console.log(`caching proxy listening on http://localhost:${port}`);
     });
 
     return server;
